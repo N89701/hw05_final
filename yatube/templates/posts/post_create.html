@@ -1,0 +1,66 @@
+{% extends 'base.html' %} 
+{% block title %} 
+  {% if not post_id %} 
+    Новый пост 
+  {% else %} 
+    Редактирование поста 
+  {% endif%} 
+{% endblock %} 
+{% block content %} 
+  <div class="row justify-content-center"> 
+    <div class="col-md-7 p-3"> 
+      <div class="card"> 
+        {% if not post_id %}   
+          <h1> Новый пост </h1> 
+        {% endif %}
+        {% if form.errors %} 
+          {% for field in form %}  
+            {% for error in field.errors %}             
+              <div class="alert alert-danger"> 
+                {{ error|escape }} 
+              </div> 
+            {% endfor %} 
+          {% endfor %} 
+          {% for error in form.non_field_errors %} 
+            <div class="alert alert-danger"> 
+              {{ error|escape }} 
+            </div> 
+          {% endfor %} 
+        {% endif %}     
+        {% if not post_id %}   
+          <form method="post" action="{% url 'posts:post_create' %}"> 
+        {% else %} 
+          <h1>Редактирование поста</h1> 
+          <form method="post" action="{% url 'posts:post_edit' post_id %}"> 
+        {% endif%} 
+            {% csrf_token %} 
+            {% load user_filters %} 
+            {% for field in form %}  
+              <div class="form-group row my-8"> 
+                <label for="{{ field.id_for_label }}"> 
+                  {{ field.label }} 
+                  {% if field.field.required %} 
+                    <span class="required text-danger">*</span> 
+                  {% endif %} 
+                </label> 
+                {{ field|addclass:'form-control' }}  
+                {% if field.help_text %} 
+                  <small id="{{ field.id_for_label }}-help" 
+                  class="form-text text-muted"> 
+                    {{ field.help_text|safe }} 
+                  </small> 
+                {% endif %} 
+              </div> 
+            {% endfor %} 
+            <button type="submit" class="btn btn-primary">
+            {% if not post_id %}
+                Опубликовать
+            {% else %}
+                Редактировать
+            {% endif %}
+          </form>
+      </div> 
+    </div> 
+  </div>
+{% endblock %}
+      
