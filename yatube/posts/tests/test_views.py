@@ -20,12 +20,11 @@ class TemplateTest(TestCase):
             slug=873,
             description='Тестовое описание',
         )
-        cls.post = Post.objects.bulk_create([
-            Post(
-                text=f'Тестовый пост подлиннее {i}', author=cls.user,
-                group=cls.group
-            ) for i in range(30)
-        ])
+        cls.post = Post.objects.create(
+            text='Тестовый пост подлиннее',
+            author=cls.user,
+            group=cls.group
+            )
 
     def setUp(self):
         self.guest_client = Client()
@@ -66,9 +65,9 @@ class TemplateTest(TestCase):
 
     def asserter(self, post):
         with self.subTest(post=post):
-            self.assertEqual(post.text, self.post[0].text)
-            self.assertEqual(post.author, self.post[0].author)
-            self.assertEqual(post.group.id, self.post[0].group.id)
+            self.assertEqual(post.text, self.post.text)
+            self.assertEqual(post.author, self.post.author)
+            self.assertEqual(post.group.id, self.post.group.id)
 
     def test_index_page_show_correct_context(self):
         """Шаблон index.html сформирован с правильным контекстом."""
@@ -84,7 +83,7 @@ class TemplateTest(TestCase):
         with self.subTest(post=response.context['page_obj'][0]):
             self.assertEqual(
                 response.context['page_obj'][0].text,
-                self.post[0].text
+                self.post.text
             )
 
     def test_profile_page_show_correct_context(self):
@@ -103,19 +102,34 @@ class TemplateTest(TestCase):
                                               )
         self.asserter(response.context['post'])
 
+class PaginatorViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='auth')
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='873',
+            description='Новая группа для пагинатора',
+        )
+        Post.objects.bulk_create([
+            Post(
+                text=f'Текста поста №{i}', author=cls.user, group=cls.group
+            ) for i in range(11)
+        ])
+
     def test_paginator(self):
-        urls = {
-            reverse('posts:home'): Post.objects.all()[:settings.PAGE_SIZE],
-            reverse('posts:groups', args=[873]):
-            self.group.posts.all()[:settings.PAGE_SIZE],
-            reverse('posts:profile', args=['auth']):
-            self.user.posts.all()[:settings.PAGE_SIZE],
-        }
-        for url, queryset in urls.items():
+        urls_expected_post_number = [
+            [reverse('posts:home'), Post.objects.all()[:settings.PAGE_SIZE]],
+            [reverse('posts:profile', args=['auth']), self.group.posts.all()[:settings.PAGE_SIZE]],
+            [reverse('posts:groups', args=[873]), self.user.posts.all()[:settings.PAGE_SIZE]],
+        ]
+        for url, queryset in urls_expected_post_number:
             with self.subTest(url=url):
-                response = self.authorized_client.get(url)
+                response = self.client.get(url)
                 page_obj = response.context.get('page_obj')
                 self.assertIsNotNone(page_obj)
                 self.assertIsInstance(page_obj, Page)
                 self.assertQuerysetEqual(
-                    page_obj.object_list, queryset, transform=lambda x: x)
+                    page_obj.object_list, queryset, transform=lambda x: x
+                )
