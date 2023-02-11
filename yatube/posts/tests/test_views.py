@@ -24,7 +24,7 @@ class TemplateTest(TestCase):
             text='Тестовый пост подлиннее',
             author=cls.user,
             group=cls.group
-            )
+        )
 
     def setUp(self):
         self.guest_client = Client()
@@ -102,6 +102,7 @@ class TemplateTest(TestCase):
                                               )
         self.asserter(response.context['post'])
 
+
 class PaginatorViewsTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -121,8 +122,12 @@ class PaginatorViewsTest(TestCase):
     def test_paginator(self):
         urls_expected_post_number = [
             [reverse('posts:home'), Post.objects.all()[:settings.PAGE_SIZE]],
-            [reverse('posts:profile', args=['auth']), self.group.posts.all()[:settings.PAGE_SIZE]],
-            [reverse('posts:groups', args=[873]), self.user.posts.all()[:settings.PAGE_SIZE]],
+            [reverse('posts:profile', args=['auth']),
+             self.group.posts.all()[:settings.PAGE_SIZE]
+             ],
+            [reverse('posts:groups', args=[873]),
+             self.user.posts.all()[:settings.PAGE_SIZE]
+             ],
         ]
         for url, queryset in urls_expected_post_number:
             with self.subTest(url=url):
