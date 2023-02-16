@@ -1,9 +1,6 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from ..models import Group, Post
-
-User = get_user_model()
+from ..models import Group, Post, User
 
 
 class PostModelTest(TestCase):
@@ -12,8 +9,8 @@ class PostModelTest(TestCase):
         super().setUpClass()
         cls.user = User.objects.create_user(username='auth')
         cls.group = Group.objects.create(
-            title='Тестовая группа',
-            slug='Тестовый слаг',
+            title='Моя любимая группа',
+            slug='fav_group',
             description='Тестовое описание',
         )
         cls.post = Post.objects.create(

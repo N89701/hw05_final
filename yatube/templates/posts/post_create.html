@@ -28,10 +28,10 @@
           {% endfor %} 
         {% endif %}     
         {% if not post_id %}   
-          <form method="post" action="{% url 'posts:post_create' %}"> 
+          <form method="post" action="{% url 'posts:post_create' %}" enctype="multipart/form-data"> 
         {% else %} 
           <h1>Редактирование поста</h1> 
-          <form method="post" action="{% url 'posts:post_edit' post_id %}"> 
+          <form method="post" action="{% url 'posts:post_edit' post_id %}" enctype="multipart/form-data"> 
         {% endif%} 
             {% csrf_token %} 
             {% load user_filters %} 
