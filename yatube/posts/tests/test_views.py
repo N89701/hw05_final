@@ -1,13 +1,22 @@
+
+import shutil
+import tempfile
+
 from django import forms
 from django.conf import settings
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.paginator import Page
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Group, Post, User
+from ..models import Follow, Group, Post, User
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class TemplateTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -23,10 +32,24 @@ class TemplateTest(TestCase):
             slug='gogo_down',
             description='Группа для тех, кто поддерживает Коляна',
         )
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small1.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         cls.post = Post.objects.create(
             text='Текст для тестирования, просто текст',
             author=cls.user,
-            group=cls.group
+            group=cls.group,
+            image=uploaded
         )
         cls.urls_with_paginator = {
             '/': reverse('posts:home'),
@@ -58,6 +81,12 @@ class TemplateTest(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def test_on_correct_URL(self):
         """Reverse использует соответствующий URL-адрес."""
@@ -80,6 +109,13 @@ class TemplateTest(TestCase):
                     value_field = form_field.fields.get(value)
                     self.assertIsInstance(value_field, expected)
 
+    def test_for_correct_work_cache(self):
+        """Тест на корректное сохранение информации в кэше"""
+        content = self.client.get(reverse('posts:home')).content
+        Post.objects.all().delete()
+        content_after_delete = self.client.get(reverse('posts:home')).content
+        self.assertEqual(content, content_after_delete)
+
     def checking_for_attributes(self, context, is_page=True):
         if is_page:
             page = context.get('page_obj')
@@ -91,6 +127,7 @@ class TemplateTest(TestCase):
         self.assertEqual(post.text, self.post.text)
         self.assertEqual(post.author, self.post.author)
         self.assertEqual(post.group.id, self.post.group.id)
+        self.assertEqual(post.image, self.post.image)
 
     def test_index_page_show_correct_context(self):
         """Шаблон index.html сформирован с правильным контекстом."""
@@ -150,6 +187,9 @@ class PaginatorViewsTest(TestCase):
             f'/profile/{cls.user.username}/',
         ]
 
+    def setUp(self):
+        cache.clear()
+
     def test_paginator(self):
         """Количество постов на 1й и 2й странице соответствует ожидаемому."""
         for url in self.urls_with_paginator:
@@ -165,3 +205,57 @@ class PaginatorViewsTest(TestCase):
                     len(page_obj2),
                     self.RANGE_CREATE - settings.PAGE_SIZE
                 )
+
+
+class TemplateTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Kolyan')
+        cls.author = User.objects.create_user(username='Vovan')
+        cls.post = Post.objects.create(
+            text='Текст для тестирования, просто текст',
+            author=cls.author,
+        )
+        cls.follow = Follow.objects.create(
+            user=cls.user,
+            author=cls.author
+        )
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        cache.clear()
+
+    def test_follow_for_authorized_user(self):
+        """Тестируем возможность подписки авторизованным пользователем"""
+        Follow.objects.all().delete()
+        url = reverse('posts:profile_follow', args=[self.author.username])
+        self.authorized_client.get(url)
+        self.assertEqual(Follow.objects.first().user, self.user)
+        self.assertEqual(Follow.objects.first().author, self.author)
+        self.assertEqual(Follow.objects.all().count(), 1)
+
+    def test_unfollow_for_authorized_user(self):
+        """Тестируем возможность отписки авторизованным пользователем"""
+        url_unfollow = reverse(
+            'posts:profile_unfollow', args=[self.author.username]
+        )
+        self.authorized_client.get(url_unfollow)
+        self.assertEqual(Follow.objects.all().count(), 0)
+
+    def test_for_posts_from_following_authors(self):
+        """Тестируем, что на странице подписок появляется пост автора,
+        на которых подписан пользователь"""
+        url = reverse('posts:follow_index')
+        context = self.authorized_client.get(url).context.get('posts').first()
+        self.assertEqual(context.author, self.author)
+
+    def test_for_none_if_unfollowing(self):
+        """Тестируем, что на странице подписок появляется пост автора,
+        на которых подписан пользователь"""
+        Follow.objects.all().delete()
+        url = reverse('posts:follow_index')
+        context = self.authorized_client.get(url).context.get('posts')
+        self.assertEqual(len(context), 0)

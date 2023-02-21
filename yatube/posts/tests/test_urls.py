@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from django.core.cache import cache
 
 from django.test import Client, TestCase
 
@@ -41,6 +42,7 @@ class PostModelTest(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_on_correct_status_for_authorized_user(self):
         """URL-адрес выдает соответствующий HTTP.Response
@@ -82,7 +84,8 @@ class PostModelTest(TestCase):
 
     def test_on_correct_status_for_nonexistent_address(self):
         """URL-адрес выдает соответствующий HTTP.Response для авторизованного
-        пользователя при попытке редактирования чужого поста."""
+        пользователя при попытке запроса несуществующего URL."""
         address = self.nonexistent_address
         response = self.guest_client.get(address)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertTemplateUsed(response, 'core/404.html')
