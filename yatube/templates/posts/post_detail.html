@@ -20,7 +20,7 @@
             {{ post.author.get_full_name}}</a>
         </li>
         <li class="list-group-item d-flex justify-content-between align-items-center">
-          Всего постов автора:  <span >{{user.posts.count}}</span>
+          Всего постов автора:  <span >{{ post.author.posts.count }}</span>
         </li>
       </ul>
     </aside>
@@ -50,7 +50,7 @@
           </div>
         </div>
       {% endif %}
-      {% if comments%}
+      {% if comments %}
       {% for comment in comments %}
         <div class="media mb-4">
           <div class="media-body">
@@ -60,7 +60,7 @@
               </a>
             </h5>
             <p>
-              {{ comment.text }}
+              {{ comment.text | linebreaksbr }}
             </p>
           </div>
         </div>

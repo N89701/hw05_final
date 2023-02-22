@@ -10,14 +10,14 @@ from django.core.paginator import Page
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..forms import PostForm
-from ..models import Follow, Group, Post, User
+from ..forms import PostForm, CommentForm
+from ..models import Follow, Group, Post, User, Comment
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
-class TemplateTest(TestCase):
+class PostTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -50,6 +50,11 @@ class TemplateTest(TestCase):
             author=cls.user,
             group=cls.group,
             image=uploaded
+        )
+        cls.comment = Comment.objects.create(
+            post=cls.post,
+            author=cls.user,
+            text='Текст комментария'
         )
         cls.urls_with_paginator = {
             '/': reverse('posts:home'),
@@ -115,6 +120,9 @@ class TemplateTest(TestCase):
         Post.objects.all().delete()
         content_after_delete = self.client.get(reverse('posts:home')).content
         self.assertEqual(content, content_after_delete)
+        cache.clear()
+        content_empty_cache = self.client.get(reverse('posts:home')).content
+        self.assertNotEqual(content, content_empty_cache)
 
     def checking_for_attributes(self, context, is_page=True):
         if is_page:
@@ -156,6 +164,8 @@ class TemplateTest(TestCase):
             f'/posts/{self.post.id}/'
         )).context
         self.checking_for_attributes(context, False)
+        self.assertIsInstance(context.get('form'), CommentForm)
+        self.assertEqual(context.get('comments').first(), self.comment)
 
     def test_on_empty_another_group(self):
         """Пост не публикуется в других группах."""
@@ -207,7 +217,7 @@ class PaginatorViewsTest(TestCase):
                 )
 
 
-class TemplateTest(TestCase):
+class FollowsTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -233,9 +243,10 @@ class TemplateTest(TestCase):
         Follow.objects.all().delete()
         url = reverse('posts:profile_follow', args=[self.author.username])
         self.authorized_client.get(url)
-        self.assertEqual(Follow.objects.first().user, self.user)
-        self.assertEqual(Follow.objects.first().author, self.author)
-        self.assertEqual(Follow.objects.all().count(), 1)
+        self.assertTrue(Follow.objects.filter(
+            user=self.user,
+            author=self.author
+        ))
 
     def test_unfollow_for_authorized_user(self):
         """Тестируем возможность отписки авторизованным пользователем"""
@@ -243,19 +254,19 @@ class TemplateTest(TestCase):
             'posts:profile_unfollow', args=[self.author.username]
         )
         self.authorized_client.get(url_unfollow)
-        self.assertEqual(Follow.objects.all().count(), 0)
+        self.assertFalse(Follow.objects.all())
 
     def test_for_posts_from_following_authors(self):
         """Тестируем, что на странице подписок появляется пост автора,
         на которых подписан пользователь"""
         url = reverse('posts:follow_index')
-        context = self.authorized_client.get(url).context.get('posts').first()
-        self.assertEqual(context.author, self.author)
+        context = self.authorized_client.get(url).context.get('page_obj')
+        self.assertIn(self.post, context)
 
     def test_for_none_if_unfollowing(self):
         """Тестируем, что на странице подписок появляется пост автора,
         на которых подписан пользователь"""
         Follow.objects.all().delete()
         url = reverse('posts:follow_index')
-        context = self.authorized_client.get(url).context.get('posts')
-        self.assertEqual(len(context), 0)
+        context = self.authorized_client.get(url).context.get('page_obj')
+        self.assertNotIn(self.post, context)

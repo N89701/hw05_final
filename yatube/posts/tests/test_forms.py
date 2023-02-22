@@ -132,17 +132,18 @@ class CommentFormTests(TestCase):
         """При отправке комментария авторизованным
         пользователем он сохраняется в БД."""
         Comment.objects.all().delete()
-        text = {
+        form_data = {
             'text': 'Пост, предназначенный для тестирования создания',
         }
         self.authorized_client.post(
             reverse('posts:add_comment', args=[self.post.id]),
-            data=text,
+            data=form_data,
             follow=True
         )
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertEqual(
+            Comment.objects.select_related('post').last().text,
+            form_data.get('text')
+        )
         tested_comment = Comment.objects.last()
-        self.assertEqual(tested_comment.text, text.get('text'))
-        self.authorized_client.get(reverse(
-            'posts:post_detail', args=[self.post.id]
-        ))
-        self.assertEqual(tested_comment.text, text.get('text'))
+        self.assertEqual(tested_comment.text, form_data.get('text'))

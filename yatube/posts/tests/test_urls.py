@@ -34,6 +34,7 @@ class PostModelTest(TestCase):
         cls.private_urls_dict = {
             f'/posts/{cls.my_post.id}/edit/': 'posts/post_create.html',
             '/create/': 'posts/post_create.html',
+            '/follow/': 'posts/follow.html',
         }
         cls.all_urls_dict = dict(cls.public_urls_dict, **cls.private_urls_dict)
         cls.nonexistent_address = 'nesuschestvuyuschiy_address'
