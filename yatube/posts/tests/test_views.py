@@ -273,6 +273,6 @@ class FollowsTest(TestCase):
 
     def test_for_follow_self(self):
         """Тестируем, что нельзя подписаться на самого себя"""
-        url = reverse('posts:follow_index')
-        following = self.authorized_client.get(url).context.get('following')
-        self.assertFalse(following)
+        url = reverse('posts:profile_follow', args=[self.user.username])
+        following = self.authorized_client.get(url)
+        self.assertNotEqual(following.status_code, 200)
