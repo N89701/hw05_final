@@ -25,6 +25,7 @@ class CommentAdmin(admin.ModelAdmin):
     list_filter = ('text', 'created', 'author', 'post',)
     empty_value_display = '-пусто-'
 
+
 admin.site.register(Post, PostAdmin)
 admin.site.register(Group, GroupAdmin)
 admin.site.register(Comment, CommentAdmin)
