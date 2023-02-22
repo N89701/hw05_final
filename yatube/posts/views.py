@@ -33,11 +33,13 @@ def group_posts(request, slug):
 def profile(request, username):
     user = get_object_or_404(User.objects.filter(username=username))
     page_obj = paginator(request, user.posts.select_related('group', 'author'))
-    following = (
-        request.user.is_authenticated
-        and request.user != user
-        and Follow.objects.filter(user=request.user, author=user)
-    )
+    if request.user.is_authenticated and Follow.objects.filter(
+        user=request.user,
+        author=user
+    ):
+        following = True
+    else:
+        following = False
     context = {
         'author': user,
         'page_obj': page_obj,
