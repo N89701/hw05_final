@@ -36,7 +36,7 @@ def profile(request, username):
     following = (
         request.user.is_authenticated
         and request.user != user
-        and Follow.object.filter(user=request.user, author=user)
+        and Follow.objects.filter(user=request.user, author=user)
     )
     context = {
         'author': user,
@@ -105,7 +105,8 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    posts = Post.objects.filter(author__following__user=request.user)
+    posts = Post.objects.filter(author__following__user=request.user)\
+    .select_related('author', 'group')
     page_obj = paginator(request, posts)
     context = {'page_obj': page_obj}
     return render(request, 'posts/follow.html', context)

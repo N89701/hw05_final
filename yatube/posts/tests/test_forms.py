@@ -142,8 +142,6 @@ class CommentFormTests(TestCase):
         )
         self.assertEqual(Comment.objects.count(), 1)
         self.assertEqual(
-            Comment.objects.select_related('post').last().text,
+            Comment.objects.last().text,
             form_data.get('text')
         )
-        tested_comment = Comment.objects.last()
-        self.assertEqual(tested_comment.text, form_data.get('text'))

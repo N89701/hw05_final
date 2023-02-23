@@ -246,7 +246,7 @@ class FollowsTest(TestCase):
         self.assertTrue(Follow.objects.filter(
             user=self.user,
             author=self.author
-        ))
+        ).exists())
 
     def test_unfollow_for_authorized_user(self):
         """Тестируем возможность отписки авторизованным пользователем"""
@@ -254,7 +254,10 @@ class FollowsTest(TestCase):
             'posts:profile_unfollow', args=[self.author.username]
         )
         self.authorized_client.get(url_unfollow)
-        self.assertFalse(Follow.objects.all())
+        self.assertFalse(Follow.objects.filter(
+            user=self.user,
+            author=self.author
+        ).exists())
 
     def test_for_posts_from_following_authors(self):
         """Тестируем, что на странице подписок появляется пост автора,
